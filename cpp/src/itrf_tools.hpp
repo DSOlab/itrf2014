@@ -10,7 +10,6 @@
 #ifdef DEBUG
 #include <iostream>
 #endif
-
 #include "ggdatetime/dtcalendar.hpp"
 #include "ggdatetime/datetime_write.hpp"
 
@@ -23,14 +22,14 @@ namespace ngpt
 /// the use of such simple collections.
 struct sta_crd
 {
-    double x,y,z;     ///< Coordinates in m, [x,y,z] components
-    std::string site; ///< NAME+' '+DOMES = 9+1+4 chars
+  double x,y,z;     ///< Coordinates in m, [x,y,z] components
+  std::string site; ///< NAME+' '+DOMES = 9+1+4 chars
 
-    /// Constructor.
-    explicit
-    sta_crd(const std::string& s, double xc, double yc, double zc) noexcept
-    : x{xc}, y{yc}, z{zc}, site{s}
-    {};
+  /// Constructor.
+  explicit
+  sta_crd(const std::string& s, double xc, double yc, double zc) noexcept
+  : x{xc}, y{yc}, z{zc}, site{s}
+  {};
 };
 
 namespace itrf_details
@@ -40,25 +39,25 @@ namespace itrf_details
 template<typename S>
     struct ssc_record
 {
-    std::string site;        ///< NAME+' '+DOMES = 9+1+4 chars
-    ngpt::datetime<S> from,  ///< Validity interval, from ...
-                      to;    ///< Vlidity interval, to ...
-    double x,y,z,            ///< Coordinates in m
-           vx,vy,vz,         ///< Velocities in m/y
-           sx,sy,sz,         ///< Coordinate sigmas
-           svx,svy,svz;      ///< Velocity sigmas
+  std::string site;        ///< NAME+' '+DOMES = 9+1+4 chars
+  ngpt::datetime<S> from,  ///< Validity interval, from ...
+                    to;    ///< Vlidity interval, to ...
+  double x,y,z,            ///< Coordinates in m
+         vx,vy,vz,         ///< Velocities in m/y
+         sx,sy,sz,         ///< Coordinate sigmas
+         svx,svy,svz;      ///< Velocity sigmas
 };
 
 /// A simple class to hold PSD records.
 template <typename S>
     struct psd_record
 {
-    std::string site;           ///< NAME + ' ' + DOMES
-    ngpt::datetime<S> teq;      ///< Time of earthquake
-    int    emdn, nmdn, umdn;    ///< Model numbers for e, n and u components
-    double ea1, et1, ea2, et2;  ///< a1,t1,a2,t2 parameters for the east component
-    double na1, nt1, na2, nt2;  ///< a1,t1,a2,t2 parameters for the north component
-    double ua1, ut1, ua2, ut2;  ///< a1,t1,a2,t2 parameters for the up component
+  std::string site;           ///< NAME + ' ' + DOMES
+  ngpt::datetime<S> teq;      ///< Time of earthquake
+  int    emdn, nmdn, umdn;    ///< Model numbers for e, n and u components
+  double ea1, et1, ea2, et2;  ///< a1,t1,a2,t2 parameters for the east component
+  double na1, nt1, na2, nt2;  ///< a1,t1,a2,t2 parameters for the north component
+  double ua1, ut1, ua2, ut2;  ///< a1,t1,a2,t2 parameters for the up component
 };
 
 /// Compare the first 4 chars of two strings. This function is mean to implement
@@ -158,49 +157,49 @@ template <typename S>
     int
     read_next_record_psd(std::ifstream& psd_stream, psd_record<S>& rec)
 {
-    constexpr int max_chars {256};
-    std::string line;
-    line.reserve(max_chars);
-    std::size_t idx;
+  constexpr int max_chars {256};
+  std::string line;
+  line.reserve(max_chars);
+  std::size_t idx;
     
-    if ( std::getline(psd_stream, line) ) {
-        rec.site  = line.substr(1, 5);
-        rec.site += line.substr(9, 9);
-        int  iyr, idoy;
-        long isec;
-        iyr  = std::stoi(line.substr(19, 5), &idx);
-        assert( idx == 2 );
-        iyr  += (iyr > 70 ) ? (1900) : (2000);
-        idoy = std::stoi(line.substr(22, 5), &idx);
-        assert( idx == 3 );
-        isec = std::stoi(line.substr(26, 6), &idx);
-        isec *= S::template sec_factor<long>(); // cast seconds to whatever S is
-        ngpt::datetime<S> tmp {ngpt::year{iyr}, ngpt::day_of_year{idoy}, S{isec}};
-        rec.teq = tmp;
-        assert( line[32] == 'E' );
-        if ( read_psd_parameters(line, rec.emdn, rec.ea1, rec.et1, rec.ea2, rec.et2) < 0 )
-            return -1;
-    } else {
-        return 1;
-    }
+  if (std::getline(psd_stream, line)) {
+    rec.site  = line.substr(1, 5);
+    rec.site += line.substr(9, 9);
+    int  iyr, idoy;
+    long isec;
+    iyr  = std::stoi(line.substr(19, 5), &idx);
+    assert(idx == 2);
+    iyr  += (iyr>70)?(1900):(2000);
+    idoy = std::stoi(line.substr(22, 5), &idx);
+    assert(idx==3);
+    isec = std::stoi(line.substr(26, 6), &idx);
+    isec *= S::template sec_factor<long>(); // cast seconds to whatever S is
+    ngpt::datetime<S> tmp {ngpt::year{iyr}, ngpt::day_of_year{idoy}, S{isec}};
+    rec.teq = tmp;
+    assert(line[32]=='E');
+    if (read_psd_parameters(line, rec.emdn, rec.ea1, rec.et1, rec.ea2, rec.et2) < 0)
+      return -1;
+  } else {
+    return 1;
+  }
     
-    if ( std::getline(psd_stream, line) ) {
-        assert( line[32] == 'N' );
-        if ( read_psd_parameters(line, rec.nmdn, rec.na1, rec.nt1, rec.na2, rec.nt2) < 0 )
-            return -1;
-    } else {
-        return 1;
-    }
-    
-    if ( std::getline(psd_stream, line) ) {
-        assert( line[32] == 'U' );
-        if ( read_psd_parameters(line, rec.umdn, rec.ua1, rec.ut1, rec.ua2, rec.ut2) < 0 )
-            return -1;
-    } else {
-        return 1;
-    }
+  if (std::getline(psd_stream, line)) {
+    assert(line[32]=='N');
+    if (read_psd_parameters(line, rec.nmdn, rec.na1, rec.nt1, rec.na2, rec.nt2) < 0)
+      return -1;
+  } else {
+    return 1;
+  }
 
-    return 0;
+  if (std::getline(psd_stream, line)) {
+    assert(line[32] == 'U');
+    if (read_psd_parameters(line, rec.umdn, rec.ua1, rec.ut1, rec.ua2, rec.ut2) < 0)
+      return -1;
+  } else {
+    return 1;
+  }
+
+  return 0;
 }
 
 /// Function to read the header off from a SSC-type file.
@@ -253,184 +252,195 @@ read_ssc_header(std::ifstream& ssc_stream, std::string& ref_frame);
 ///        alredy called the read_ssc_header function (so that the stream is
 ///        set to the right first position).
 template<typename S>
-    int
-    read_next_record(std::ifstream& ssc_stream, ssc_record<S>& record)
+  int
+  read_next_record(std::ifstream& ssc_stream, ssc_record<S>& record)
 {
-    constexpr int max_chars {256};
-    std::string line;
-    line.reserve(max_chars);
+  constexpr int max_chars {256};
+  std::string line;
+  line.reserve(max_chars);
     
-    // first line has domes, site_id, position info and validity interval
-    if ( std::getline(ssc_stream, line) ) {
-        record.site  = line.substr(32, 5);                 // 4-char id
-        record.site += line.substr(0, 10);                 // domes
-        std::size_t pos {36}, idx;
-        record.x = std::stod(line.substr(pos, 20), &idx);   // x
-        pos += idx;
-        record.y = std::stod(line.substr(pos, 20), &idx);   // y
-        pos += idx;
-        record.z = std::stod(line.substr(pos, 20), &idx);   // z
-        pos += idx;
-        record.sx = std::stod(line.substr(pos, 20), &idx);  // sx
-        pos += idx;
-        record.sy = std::stod(line.substr(pos, 20), &idx);  // sy
-        pos += idx;
-        record.sz = std::stod(line.substr(pos, 20), &idx);  // sz
-        pos += idx;
-        record.from = ngpt::datetime<S>::min();     // preset from to min date
-        record.to   = ngpt::datetime<S>::max();     // preset to to max date
-        if ( (pos = line.find_first_of(':', pos)) != std::string::npos ) {
-            int  iyr, idoy;
-            long isec;
-            // Resolve 'from' date string ...
-            pos  -= 2;
-            iyr   = std::stoi(line.substr(pos, 2), &idx);
-            assert( idx == 2 );
-            pos  += idx + 1;
-            idoy  = std::stoi(line.substr(pos, 3), &idx);
-            assert( idx == 3 );
-            pos  += idx + 1;
-            isec  = std::stol(line.substr(pos, 6), &idx); // seconds
-            isec *= S::template sec_factor<long>(); // cast seconds to whatever S is
-            if ( iyr + idoy + isec != 0 ) { 
-                iyr  += (iyr > 70 ) ? (1900) : (2000);
-                ngpt::datetime<S> tmp
-                    {ngpt::year{iyr}, ngpt::day_of_year{idoy}, S{isec}};
-                record.from = tmp;
-            }
-            // Resolve 'to' date sting ...
-            pos  += idx;
-            pos   = line.find_first_of(':', pos) - 2;
-            iyr   = std::stoi(line.substr(pos, 2), &idx);
-            pos  += idx + 1;
-            idoy  = std::stoi(line.substr(pos, 3), &idx);
-            assert( idx == 3 );
-            pos  += idx + 1;
-            isec  = std::stol(line.substr(pos));
-            isec *= S::template sec_factor<long>();
-            if ( iyr + idoy + isec != 0 ) { 
-                iyr  += (iyr > 70 ) ? (1900) : (2000);
-                ngpt::datetime<S> tmp
-                    {ngpt::year{iyr}, ngpt::day_of_year{idoy}, S{isec}};
-                record.to = tmp;
-            }
-        }
-    } else {
-        return 1;
+  // first line has domes, site_id, position info and validity interval
+  if (std::getline(ssc_stream, line)) {
+    record.site  = line.substr(32, 5);                 // 4-char id
+    record.site += line.substr(0, 10);                 // domes
+    std::size_t pos {36}, idx;
+    record.x = std::stod(line.substr(pos, 20), &idx);   // x
+    pos += idx;
+    record.y = std::stod(line.substr(pos, 20), &idx);   // y
+    pos += idx;
+    record.z = std::stod(line.substr(pos, 20), &idx);   // z
+    pos += idx;
+    record.sx = std::stod(line.substr(pos, 20), &idx);  // sx
+    pos += idx;
+    record.sy = std::stod(line.substr(pos, 20), &idx);  // sy
+    pos += idx;
+    record.sz = std::stod(line.substr(pos, 20), &idx);  // sz
+    pos += idx;
+    record.from = ngpt::datetime<S>::min();     // preset from to min date
+    record.to   = ngpt::datetime<S>::max();     // preset to to max date
+    if ((pos=line.find_first_of(':', pos))!=std::string::npos) {
+      int  iyr, idoy;
+      long isec;
+      // Resolve 'from' date string ...
+      pos  -= 2;
+      iyr   = std::stoi(line.substr(pos, 2), &idx);
+      assert(idx==2);
+      pos  += idx + 1;
+      idoy  = std::stoi(line.substr(pos, 3), &idx);
+      assert(idx==3);
+      pos  += idx + 1;
+      isec  = std::stol(line.substr(pos, 6), &idx); // seconds
+      isec *= S::template sec_factor<long>(); // cast seconds to whatever S is
+      if ((iyr+idoy+isec)!=0) { 
+        iyr  += (iyr>70)?(1900):(2000);
+        ngpt::datetime<S> tmp
+          {ngpt::year{iyr}, ngpt::day_of_year{idoy}, S{isec}};
+        record.from = tmp;
+      }
+      // Resolve 'to' date sting ...
+      pos  += idx;
+      pos   = line.find_first_of(':', pos) - 2;
+      iyr   = std::stoi(line.substr(pos, 2), &idx);
+      pos  += idx + 1;
+      idoy  = std::stoi(line.substr(pos, 3), &idx);
+      assert(idx==3);
+      pos  += idx + 1;
+      isec  = std::stol(line.substr(pos));
+      isec *= S::template sec_factor<long>();
+      if ((iyr+idoy+isec)!=0) { 
+        iyr  += (iyr>70)?(1900):(2000);
+        ngpt::datetime<S> tmp
+          {ngpt::year{iyr}, ngpt::day_of_year{idoy}, S{isec}};
+        record.to = tmp;
+      }
     }
-    
-    // second line has velocity info
-    if ( std::getline(ssc_stream, line) ) {
-        assert( !line.compare(0, 9, record.site, 5, 9 ) );
-        std::size_t pos {36}, idx;
-        record.vx = std::stod(line.substr(pos, 20), &idx);   // vx
-        pos += idx;
-        record.vy = std::stod(line.substr(pos, 20), &idx);   // vy
-        pos += idx;
-        record.vz = std::stod(line.substr(pos, 20), &idx);   // vz
-        pos += idx;
-        record.svx = std::stod(line.substr(pos, 20), &idx);  // svx
-        pos += idx;
-        record.svy = std::stod(line.substr(pos, 20), &idx);  // svy
-        pos += idx;
-        record.svz = std::stod(line.substr(pos, 20), &idx);  // svz
-    } else {
-        return 1;
-    }
-    
-    return 0;
+  } else {
+    return 1;
+  }
+
+  // second line has velocity info
+  if (std::getline(ssc_stream, line)) {
+    assert(!line.compare(0, 9, record.site, 5, 9 ));
+    std::size_t pos{36}, idx;
+    record.vx = std::stod(line.substr(pos, 20), &idx);   // vx
+    pos += idx;
+    record.vy = std::stod(line.substr(pos, 20), &idx);   // vy
+    pos += idx;
+    record.vz = std::stod(line.substr(pos, 20), &idx);   // vz
+    pos += idx;
+    record.svx = std::stod(line.substr(pos, 20), &idx);  // svx
+    pos += idx;
+    record.svy = std::stod(line.substr(pos, 20), &idx);  // svy
+    pos += idx;
+    record.svz = std::stod(line.substr(pos, 20), &idx);  // svz
+  } else {
+    return 1;
+  }
+
+  return 0;
 }
 
 } // namespace itrf_details
 
 template<typename S>
-    int
-    ssc_extrapolate(std::ifstream& fin, const std::vector<std::string>& stations, 
-        const ngpt::datetime<S>& t, const ngpt::datetime<S>& t0, 
-        std::vector<sta_crd>& results,
-        bool use_domes = false)
+  int
+  ssc_extrapolate(std::ifstream& fin, const std::vector<std::string>& stations, 
+      const ngpt::datetime<S>& t, const ngpt::datetime<S>& t0, 
+      std::vector<sta_crd>& results,
+      bool use_domes = false)
 {
-    std::function<int(const std::string&, const std::string&)> cmp
+  std::function<int(const std::string&, const std::string&)> cmp
         = itrf_details::compare_sta_id;
-    if ( use_domes ) cmp = itrf_details::compare_sta_domes;
-    ngpt::datetime_interval<S> dt {ngpt::delta_date(t, t0)};
-    double dyr = dt.as_mjd() / 365.25;
+  if (use_domes) cmp = itrf_details::compare_sta_domes;
+  ngpt::datetime_interval<S> dt {ngpt::delta_date(t, t0)};
+  double dyr = dt.as_mjd() / 365.25;
 
-    results.clear();
-    results.reserve(stations.size());
+  results.clear();
+  results.reserve(stations.size());
 
-    itrf_details::ssc_record<S> record;
-    std::vector<std::string> sta {stations};
-    auto it = sta.begin();
-    std::string site;
-    while ( !itrf_details::read_next_record<S>(fin, record) && sta.size() ) {
-        site = record.site;
-        if ( (it = std::find_if(sta.begin(), sta.end(),
-            [=](const std::string& str)
-                {return !cmp(site, str);})) != sta.end() ) {
-            if ( t >= record.from && t < record.to ) {
-                sta.erase(it);
-                auto x = record.x + (record.vx * dyr);
-                auto y = record.y + (record.vy * dyr);
-                auto z = record.z + (record.vz * dyr);
-                results.emplace_back(site, x, y, z);
-            } 
-        }
+  itrf_details::ssc_record<S> record;
+  std::vector<std::string> sta {stations};
+  //  warning! if domes are provided, then the strings in the stations vector are
+  //+ e.g. '97401M003', '92701M003', etc ..... Now, we need to transform these to
+  //+ ID+' '+DOMES, i.e. add 5* whitespaces at the begining
+  if (use_domes) std::transform(sta.begin(), sta.end(), sta.begin(), 
+    [](std::string& s){return ("     "+s);});
+  
+  auto it = sta.begin();
+  std::string site;
+  while (!itrf_details::read_next_record<S>(fin, record) && sta.size()) {
+    site = record.site;
+    if ((it = std::find_if(sta.begin(), sta.end(),
+          [=](const std::string& str){return !cmp(site, str);})) != sta.end()) {
+      if (t>=record.from && t<record.to) {
+        sta.erase(it);
+        auto x = record.x + (record.vx * dyr);
+        auto y = record.y + (record.vy * dyr);
+        auto z = record.z + (record.vz * dyr);
+        results.emplace_back(site, x, y, z);
+      } 
     }
-    return results.size(); // number of stations actually found
+  }
+  return results.size(); // number of stations actually found
 }
 
 template<typename S>
-    int
-    compute_psd(const char* psd_file, const std::vector<std::string>& stations,
-        const ngpt::datetime<S>& t, std::vector<sta_crd>& results,
-        bool use_domes = false)
+  int
+  compute_psd(const char* psd_file, const std::vector<std::string>& stations,
+      const ngpt::datetime<S>& t, std::vector<sta_crd>& results,
+      bool use_domes = false)
 {
-    results.clear();
-    results.reserve(stations.size());
+  results.clear();
+  results.reserve(stations.size());
 
-    std::ifstream fin (psd_file);
-    if ( !fin.is_open() ) return -1;
-    
-    // form the site names as 4CHAR_ID + ' ' + DOMES
-    std::string site_name;
-    for (const auto& i : stations) {
-        if ( !use_domes ) {
-            site_name = i.substr(0, 4) + "          ";
-        } else {
-            site_name = "     " + i.substr(0, 9);
-        }
-        results.emplace_back(site_name, 0e0, 0e0, 0e0);
-    }
+  std::ifstream fin (psd_file);
+  if (!fin.is_open()) return -1;
 
-    std::function<int(const std::string&, const std::string&)> cmp
+  std::vector<std::string> sta(stations);
+  //  warning! if domes are provided, then the strings in the stations vector are
+  //+ e.g. '97401M003', '92701M003', etc ..... Now, we need to transform these to
+  //+ ID+' '+DOMES, i.e. add 5* whitespaces at the begining
+  if (use_domes) std::transform(sta.begin(), sta.end(), sta.begin(), 
+    [](std::string& s){return ("     "+s);});
+
+  std::function<int(const std::string&, const std::string&)> cmp
         = itrf_details::compare_sta_id;
-    if ( use_domes ) cmp = itrf_details::compare_sta_domes;
+  if (use_domes) cmp = itrf_details::compare_sta_domes;
 
-    itrf_details::psd_record<S> rec;
-    auto it   = results.begin();
-    auto rend = results.end();
-    std::string site;
-    double dyr;
-    while ( !itrf_details::read_next_record_psd<S>(fin, rec) ) {
-        site = rec.site;
-        if ( (it = std::find_if(results.begin(), rend,
-            [=](const sta_crd& record)
-                {return !cmp(site, record.site);})) != rend ) {
-            it->site = rec.site;
-            if ( t >= rec.teq ) {
-                ngpt::datetime_interval<S> dt {ngpt::delta_date(t, rec.teq)};
-                dyr = dt.as_mjd() / 365.25;
-                it->x += itrf_details::parametric(rec.emdn, dyr, rec.ea1,
-                    rec.et1, rec.ea2, rec.et2);
-                it->y += itrf_details::parametric(rec.nmdn, dyr, rec.na1,
-                    rec.nt1, rec.na2, rec.nt2);
-                it->z += itrf_details::parametric(rec.umdn, dyr, rec.ua1,
-                    rec.ut1, rec.ua2, rec.ut2);
-            } 
-        }
+  itrf_details::psd_record<S> rec;
+  auto send = sta.end();
+  auto rit=results.begin();
+  std::string site;
+  double dyr;
+  while (!itrf_details::read_next_record_psd<S>(fin, rec)) {
+    site = rec.site;
+    // is the station read of interest?
+    if (auto it=std::find_if(sta.begin(), sta.end(),
+          [=](const auto& str){return !cmp(site, str);}); it!=send) {
+      site = rec.site;
+      // do we already have it in the results vector?
+      if (rit=std::find_if(results.begin(), results.end(), 
+            [&site=std::as_const(rec.site)](const sta_crd& a){return site==a.site;});
+          rit!=results.end()) {
+        ;
+      } else {
+        results.emplace_back(site, 0e0, 0e0, 0e0);
+        rit=results.end()-1;
+      }
+      // compute/append PSD
+      if (t>=rec.teq) {
+        ngpt::datetime_interval<S> dt(ngpt::delta_date(t, rec.teq));
+        dyr = dt.as_mjd() / 365.25;
+        rit->x += itrf_details::parametric(rec.emdn, dyr, rec.ea1,
+            rec.et1, rec.ea2, rec.et2);
+        rit->y += itrf_details::parametric(rec.nmdn, dyr, rec.na1,
+            rec.nt1, rec.na2, rec.nt2);
+        rit->z += itrf_details::parametric(rec.umdn, dyr, rec.ua1,
+            rec.ut1, rec.ua2, rec.ut2);
+      } 
     }
-    return results.size(); // number of stations actually found
+  }
+  return results.size(); // number of stations actually found
 }
 
 } // namespace ngpt
