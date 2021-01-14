@@ -10,150 +10,194 @@ from itrftools.compute_psd import compute_psd, enu2xyz
 
 ##  set the cmd parser
 parser = argparse.ArgumentParser(
-  description='Extrapolate coordinates from a SSC file, optionaly including'
-  'a PSD file',
-  epilog ='Ntua - 2017'
-)
-parser.add_argument('-s', '--stations',
-  nargs    = '*',
-  action   = 'store',
-  required = False,
-  help     = 'A whitespace seperated list of stations to compute coordinates'
-  ' for. The given names are checked against the \"4-char ID\" in the input '
-  'files.',
-  metavar  = 'STATION_LIST',
-  dest     = 'stations',
-  default  = []
-)
-parser.add_argument('-m', '--domes',
-  nargs    = '*',
-  action   = 'store',
-  required = False,
-  help     = 'A whitespace seperated list of station domes to compute coordinates'
-  ' for. The given deomes are checked against the \"DOMES\" field in the input '
-  'files.',
-  metavar  = 'DOMES_LIST',
-  dest     = 'domes',
-  default  = []
-)
-parser.add_argument('-c', '--ssc',
-  action   = 'store',
-  required = False,
-  help     = 'A SSC ascci file to extract coordinates and velocities from. These'
-  ' files are normaly accessible at: http://itrf.ign.fr/ITRF_solutions/',
-  metavar  = 'SSC_FILE',
-  dest     = 'ssc_file',
-  default  = None
-)
-parser.add_argument('-p', '--psd',
-  action   = 'store',
-  required = False,
-  help     = 'A PSD ascci file to extract Post-Seismic-Deformation models and'
-  'parameters from. These files are normaly accessible at: '
-  'ftp://itrf.ign.fr/pub/itrf/itrf2014/ITRF2014-psd-gnss.dat',
-  metavar  = 'PSD_FILE',
-  dest     = 'psd_file',
-  default  = None
-)
-parser.add_argument('-y', '--year',
-  action   = 'store',
-  type     = int,
-  required = True,
-  help     = 'The year to extrapolate coordinates at.',
-  metavar  = 'YEAR',
-  dest     = 'year'
-)
-parser.add_argument('-d', '--doy',
-  action   = 'store',
-  type     = int,
-  required = True,
-  help     = 'The day of year to extrapolate coordinates at.',
-  metavar  = 'DOY',
-  dest     = 'doy'
-)
-parser.add_argument('--psd-only',
-  action   = 'store_true',
-  help     = 'If this switch is on, then only the PSD corrections are computed'
-  ' (per component); no extrapolation of coordinates is performed',
-  dest     = 'psd_only',
-  default  = False
-)
+    description='Extrapolate coordinates from a SSC file, optionaly including'
+    'a PSD file',
+    epilog='Ntua - 2017')
+parser.add_argument(
+    '-s',
+    '--stations',
+    nargs='*',
+    action='store',
+    required=False,
+    help='A whitespace seperated list of stations to compute coordinates'
+    ' for. The given names are checked against the \"4-char ID\" in the input '
+    'files.',
+    metavar='STATION_LIST',
+    dest='stations',
+    default=[])
+parser.add_argument(
+    '-m',
+    '--domes',
+    nargs='*',
+    action='store',
+    required=False,
+    help='A whitespace seperated list of station domes to compute coordinates'
+    ' for. The given deomes are checked against the \"DOMES\" field in the input '
+    'files.',
+    metavar='DOMES_LIST',
+    dest='domes',
+    default=[])
+parser.add_argument(
+    '-c',
+    '--ssc',
+    action='store',
+    required=False,
+    help='A SSC ascci file to extract coordinates and velocities from. These'
+    ' files are normaly accessible at: http://itrf.ign.fr/ITRF_solutions/',
+    metavar='SSC_FILE',
+    dest='ssc_file',
+    default=None)
+parser.add_argument(
+    '-p',
+    '--psd',
+    action='store',
+    required=False,
+    help='A PSD ascci file to extract Post-Seismic-Deformation models and'
+    'parameters from. These files are normaly accessible at: '
+    'ftp://itrf.ign.fr/pub/itrf/itrf2014/ITRF2014-psd-gnss.dat',
+    metavar='PSD_FILE',
+    dest='psd_file',
+    default=None)
+parser.add_argument('-y',
+                    '--year',
+                    action='store',
+                    type=int,
+                    required=True,
+                    help='The year to extrapolate coordinates at.',
+                    metavar='YEAR',
+                    dest='year')
+parser.add_argument('-d',
+                    '--doy',
+                    action='store',
+                    type=int,
+                    required=True,
+                    help='The day of year to extrapolate coordinates at.',
+                    metavar='DOY',
+                    dest='doy')
+parser.add_argument(
+    '--psd-only',
+    action='store_true',
+    help='If this switch is on, then only the PSD corrections are computed'
+    ' (per component); no extrapolation of coordinates is performed',
+    dest='psd_only',
+    default=False)
+
 
 def merge_sort_unique(res1, res2=None):
-  if res2 != None: res1 += res2
-  sl = sorted(res1, key= lambda x: x[0])
-  ul = []
-  [ul.append(x) for x in sl if x[0] not in map(itemgetter(0), ul)]
-  return ul
+    if res2 != None:
+        res1 += res2
+    sl = sorted(res1, key=lambda x: x[0])
+    ul = []
+    [ul.append(x) for x in sl if x[0] not in map(itemgetter(0), ul)]
+    return ul
+
 
 # parse cmd
 args = parser.parse_args()
 
 # make sure the user didn't mess up the args ...
 if args.psd_only and not args.psd_file:
-  print('ERROR. If you need the PSD values, you need to supply a PSD file!', file=sys.stderr)
-  sys.exit(1)
+    print('ERROR. If you need the PSD values, you need to supply a PSD file!',
+          file=sys.stderr)
+    sys.exit(1)
 if not args.psd_only and not args.ssc_file:
-  print('ERROR. You need to supply an SSC file for coordinate extrapolation.', file=sys.stderr)
-  sys.exit(1)
+    print('ERROR. You need to supply an SSC file for coordinate extrapolation.',
+          file=sys.stderr)
+    sys.exit(1)
 
 # convert the give year-doy to a datetime.datetime instance
 t = datetime.datetime.strptime('{}-{}'.format(args.year, args.doy), '%Y-%j')
 
 # for all stations in station list, extrapolate coordinates
-station =  args.stations
+station = args.stations
 results = []
 
 # easy case: We have a PSD file but no SSC; Only compute PSD in [e,n,u]
 if args.psd_only and not args.ssc_file:
-  for s in args.stations:
-    sta, dms, e, n, u = compute_psd(args.psd_file, t=t, station=s)
-    if [e,n,u]!=[0]*3 : results.append([sta, dms, e, n, u])
-  for d in args.domes:
-    sta, dms, e, n, u = compute_psd(args.psd_file, t=t, station=None, domes=d)
-    if [e,n,u]!=[0]*3 : results.append([sta, dms, e, n, u])
-  print('NAME   DOMES   East(mm) North(mm) Up(mm)        EPOCH')
-  print('---- --------- -------- -------- -------- ------------------')
-  for item in merge_sort_unique(results):
-    print('{0} {1} {2:8.2f} {3:8.2f} {4:8.2f} {5}'.format(*(item+[t])))
-  sys.exit(0)
+    for s in args.stations:
+        sta, dms, e, n, u = compute_psd(args.psd_file, t=t, station=s)
+        if [e, n, u] != [0] * 3:
+            results.append([sta, dms, e, n, u])
+    for d in args.domes:
+        sta, dms, e, n, u = compute_psd(args.psd_file,
+                                        t=t,
+                                        station=None,
+                                        domes=d)
+        if [e, n, u] != [0] * 3:
+            results.append([sta, dms, e, n, u])
+    print('NAME   DOMES   East(mm) North(mm) Up(mm)        EPOCH')
+    print('---- --------- -------- -------- -------- ------------------')
+    for item in merge_sort_unique(results):
+        print('{0} {1} {2:8.2f} {3:8.2f} {4:8.2f} {5}'.format(*(item + [t])))
+    sys.exit(0)
 
 # First step is to extrapolate coordinates
-with open(args.ssc_file) as fin: frame, reft = read_header(fin)
-results =  itrf_extrapolate(ssc_file=args.ssc_file, t0=reft, t=t, station=args.stations)
-results += itrf_extrapolate(ssc_file=args.ssc_file, t0=reft, t=t, domes=args.domes)
+with open(args.ssc_file) as fin:
+    frame, reft = read_header(fin)
+results = itrf_extrapolate(ssc_file=args.ssc_file,
+                           t0=reft,
+                           t=t,
+                           station=args.stations)
+results += itrf_extrapolate(ssc_file=args.ssc_file,
+                            t0=reft,
+                            t=t,
+                            domes=args.domes)
 
 # find PSD corrections (if needed); if we want extra PSD info, we are going to
 #+ strore it in a new list
 if args.psd_file:
-  if args.psd_only: psd_info = []
-  for idx, item in enumerate(results):
-    _, _, e, n, u = compute_psd(args.psd_file, t=t, station=item['station'])
-    e, n, u = [ i/1000e0 for i in [e, n, u] ] ## mm to m
-    #print('#Found PSD for station {}, [e, n, u] = [{}, {}, {}]'.format(item['station'], e, n, u))
-    dx, dy, dz = enu2xyz(e, n, u, item['x'], item['y'], item['z']) ## local to cartesian
-    #print('#In cartesian that is [x, y, z] = [{}, {}, {}]'.format(dx, dy, dz))
-    #print('#Adding psd to station {} {} {} {}'.format(item['station'], item['x'], item['y'], item['z']))
-    results[idx]['x'] += dx
-    results[idx]['y'] += dy
-    results[idx]['z'] += dz
-    if args.psd_only: psd_info.append({'sta':item['station'], 'dms':item['domes'],'e':e*1e3, 'n':n*1e3, 'u':u*1e3, 'dx':dx*1e3, 'dy':dy*1e3, 'dz':dz*1e3})
-    #print('#New coordinates of station {} {} {} {}'.format(item['station'], item['x']+dx, item['y']+dy, item['z']+dz))
+    if args.psd_only:
+        psd_info = []
+    for idx, item in enumerate(results):
+        _, _, e, n, u = compute_psd(args.psd_file, t=t, station=item['station'])
+        e, n, u = [i / 1000e0 for i in [e, n, u]]  ## mm to m
+        #print('#Found PSD for station {}, [e, n, u] = [{}, {}, {}]'.format(item['station'], e, n, u))
+        dx, dy, dz = enu2xyz(e, n, u, item['x'], item['y'],
+                             item['z'])  ## local to cartesian
+        #print('#In cartesian that is [x, y, z] = [{}, {}, {}]'.format(dx, dy, dz))
+        #print('#Adding psd to station {} {} {} {}'.format(item['station'], item['x'], item['y'], item['z']))
+        results[idx]['x'] += dx
+        results[idx]['y'] += dy
+        results[idx]['z'] += dz
+        if args.psd_only:
+            psd_info.append({
+                'sta': item['station'],
+                'dms': item['domes'],
+                'e': e * 1e3,
+                'n': n * 1e3,
+                'u': u * 1e3,
+                'dx': dx * 1e3,
+                'dy': dy * 1e3,
+                'dz': dz * 1e3
+            })
+        #print('#New coordinates of station {} {} {} {}'.format(item['station'], item['x']+dx, item['y']+dy, item['z']+dz))
 
 # write results (depending on if we only want the PSDs or not)
-sta_printed=[]
+sta_printed = []
 print('Reference Frame: {}, Reference Epoch: {}'.format(frame, reft))
 if not args.psd_only:
-  print('NAME   DOMES         X(m)           Y(m)            Z(m)        EPOCH')
-  print('---- --------- --------------- --------------- --------------- ------------------')
-  for item in results:
-    if item['station'] not in sta_printed:
-      print('{0} {1} {2:15.5f} {3:15.5f} {4:15.5f} {5}'.format(item['station'], item['domes'], item['x'], item['y'], item['z'], t))
-      sta_printed.append(item['station'])
+    print(
+        'NAME   DOMES         X(m)           Y(m)            Z(m)        EPOCH')
+    print(
+        '---- --------- --------------- --------------- --------------- ------------------'
+    )
+    for item in results:
+        if item['station'] not in sta_printed:
+            print('{0} {1} {2:15.5f} {3:15.5f} {4:15.5f} {5}'.format(
+                item['station'], item['domes'], item['x'], item['y'], item['z'],
+                t))
+            sta_printed.append(item['station'])
 else:
-  print('NAME   DOMES   East(mm) North(mm) Up(mm)   X(mm)    Y(mm)     Z(mm)      EPOCH')
-  print('---- --------- -------- -------- -------- -------- -------- -------- ------------------')
-  for item in psd_info:
-    if item['sta'] not in sta_printed:
-      print('{0} {1} {2:8.2f} {3:8.2f} {4:8.2f} {5:8.2f} {6:8.2f} {7:8.2f} {8}'.format(item['sta'], item['dms'], item['e'], item['n'], item['u'], item['dx'], item['dy'], item['dz'], t))
+    print(
+        'NAME   DOMES   East(mm) North(mm) Up(mm)   X(mm)    Y(mm)     Z(mm)      EPOCH'
+    )
+    print(
+        '---- --------- -------- -------- -------- -------- -------- -------- ------------------'
+    )
+    for item in psd_info:
+        if item['sta'] not in sta_printed:
+            print(
+                '{0} {1} {2:8.2f} {3:8.2f} {4:8.2f} {5:8.2f} {6:8.2f} {7:8.2f} {8}'
+                .format(item['sta'], item['dms'], item['e'], item['n'],
+                        item['u'], item['dx'], item['dy'], item['dz'], t))
 sys.exit(0)

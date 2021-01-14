@@ -1,10 +1,12 @@
 #! /usr/bin/python
+#-*- coding: utf-8 -*-
 
 import math
 ## Last updated: August 17, 2015
 
+
 def md_pwl():
-  """ Compute the post-seismic deformation/correction "d" using parametric
+    """ Compute the post-seismic deformation/correction "d" using parametric
       model PWL (Piece-Wise Linear Function)
 
       Returns
@@ -13,10 +15,11 @@ def md_pwl():
             post-seismic correction in mm (at dtq years after the earthquake)
 
   """
-  return 0e0
+    return 0e0
+
 
 def md_log(dtq, a1, t1):
-  """ Compute the post-seismic deformation/correction "d" using parametric
+    """ Compute the post-seismic deformation/correction "d" using parametric
       model Logarithmic Function
 
       Parameters
@@ -39,10 +42,11 @@ def md_log(dtq, a1, t1):
       (MJD - MJD_Earthquake)/365.25 where MJD is the modified julian day.
 
   """
-  return a1*math.log(1e0+dtq/t1)
+    return a1 * math.log(1e0 + dtq / t1)
+
 
 def md_exp(dtq, a1, t1):
-  """ Compute the post-seismic deformation/correction "d" using parametric
+    """ Compute the post-seismic deformation/correction "d" using parametric
       model Exponential Function
 
       Parameters
@@ -65,11 +69,12 @@ def md_exp(dtq, a1, t1):
       (MJD - MJD_Earthquake)/365.25 where MJD is the modified julian day.
 
   """
-  te1 = dtq/t1
-  return a1*(1e0-math.exp(-te1))
+    te1 = dtq / t1
+    return a1 * (1e0 - math.exp(-te1))
+
 
 def md_logexp(dtq, a1, t1, a2, t2):
-  """ Compute the post-seismic deformation/correction "d" using parametric
+    """ Compute the post-seismic deformation/correction "d" using parametric
       model Logarithmic and Exponential Function
 
       Parameters
@@ -96,11 +101,12 @@ def md_logexp(dtq, a1, t1, a2, t2):
       (MJD - MJD_Earthquake)/365.25 where MJD is the modified julian day.
 
   """
-  te2 = dtq/t2
-  return a1*math.log(1+dtq/t1) + a2*(1-math.exp(-te2))
+    te2 = dtq / t2
+    return a1 * math.log(1e0 + dtq / t1) + a2 * (1e0 - math.exp(-te2))
+
 
 def md_expexp(dtq, a1, t1, a2, t2):
-  """ Compute the post-seismic deformation/correction "d" using parametric
+    """ Compute the post-seismic deformation/correction "d" using parametric
       model Two Exponential Functions
 
       Parameters
@@ -127,12 +133,13 @@ def md_expexp(dtq, a1, t1, a2, t2):
       (MJD - MJD_Earthquake)/365.25 where MJD is the modified julian day.
 
   """
-  te1 = dtq/t1
-  te2 = dtq/t2
-  return a1*(1e0-math.exp(-te1)) + a2*(1e0-math.exp(-te2))
+    te1 = dtq / t1
+    te2 = dtq / t2
+    return a1 * (1e0 - math.exp(-te1)) + a2 * (1e0 - math.exp(-te2))
+
 
 def parametric(model='pwl', *args):
-  """ Compute the post-seismic deformation/correction "d" using the 
+    """ Compute the post-seismic deformation/correction "d" using the 
       parametric model specified by the (input) variable 'model'.
 
       Parameters
@@ -171,23 +178,19 @@ def parametric(model='pwl', *args):
       (MJD - MJD_Earthquake)/365.25 where MJD is the modified julian day.
 
   """
-  model_dict = {'pwl': md_pwl,
-                'log': md_log,
-                'exp': md_exp,
-                'logexp': md_logexp,
-                'expexp': md_expexp}
+    model_dict = {
+        'pwl': md_pwl,
+        'log': md_log,
+        'exp': md_exp,
+        'logexp': md_logexp,
+        'expexp': md_expexp
+    }
 
-  int_model_dict = {0: 'pwl',
-                    1: 'log',
-                    2: 'exp',
-                    3: 'logexp',
-                    4: 'expexp'}
-  try:
-    model + 1
-    return ( model_dict[int_model_dict[model]](*args)
-      if model > 0
-      else model_dict[int_model_dict[model]]() )
-  except:
-    return ( model_dict[model](*args)
-      if model != 'pwl'
-      else model_dict[model]() )
+    int_model_dict = {0: 'pwl', 1: 'log', 2: 'exp', 3: 'logexp', 4: 'expexp'}
+    try:
+        model + 1
+        return (model_dict[int_model_dict[model]](
+            *args) if model > 0 else model_dict[int_model_dict[model]]())
+    except:
+        return (model_dict[model](
+            *args) if model != 'pwl' else model_dict[model]())

@@ -1,9 +1,10 @@
 #! /usr/bin/python
+#-*- coding: utf-8 -*-
 
 from __future__ import print_function
 import sys, datetime
 from itrftools.compute_psd import time_str2dt
-# sys.path.append('.')
+
 
 def read_header(fstream):
     """ Read the header of a .SSC file (i.e. a reference frame info file).
@@ -25,19 +26,22 @@ def read_header(fstream):
             instance.
     """
     line = fstream.readline()
-    l    = line.split()
-    assert( len(l) == 8 )
-    assert( l[1] == 'STATION'   and
-            l[2] == 'POSITIONS' and
-            l[3] == 'AT'        and
-            l[4] == 'EPOCH'     and
-            l[6] == 'AND'       and
-            l[7] == 'VELOCITIES' )
+    l = line.split()
+    assert (len(l) == 8)
+    assert (l[1] == 'STATION' and l[2] == 'POSITIONS' and l[3] == 'AT' and
+            l[4] == 'EPOCH' and l[6] == 'AND' and l[7] == 'VELOCITIES')
     refframe = l[0]
     refepoch = int(float(l[5]))
-    assert( refepoch == float(l[5]) )
-    for i in range(6): fstream.readline()
-    return refframe, datetime.datetime(year=refepoch, month=1, day=1, hour=0, minute=0, second=0)
+    assert (refepoch == float(l[5]))
+    for i in range(6):
+        fstream.readline()
+    return refframe, datetime.datetime(year=refepoch,
+                                       month=1,
+                                       day=1,
+                                       hour=0,
+                                       minute=0,
+                                       second=0)
+
 
 def read_next_record(line, fstream):
     """ Read a record line (for one station) off from a SSC file. Actually, the
@@ -65,34 +69,49 @@ def read_next_record(line, fstream):
         dictionary
             A dictionary where the keys are the fields read off from the records
     """
-    domes  = line[0:9]
-    name   = line[10:27]
-    tqn    = line[27:31]
-    cid    = line[32:36]
+    domes = line[0:9]
+    name = line[10:27]
+    tqn = line[27:31]
+    cid = line[32:36]
     tstart = datetime.datetime.min
-    tstop  = datetime.datetime.max
-    try: # start and stop times included
+    tstop = datetime.datetime.max
+    try:  # start and stop times included
         stop_col = line[36:].index(':') - 2 + 36
         dstrs = line[stop_col:].split()
-        assert( len(dstrs) == 2 )
-        if dstrs[0].strip() != '00:000:00000': tstart = time_str2dt(dstrs[0]) 
-        if dstrs[1].strip() != '00:000:00000': tstop  = time_str2dt(dstrs[1])
+        assert (len(dstrs) == 2)
+        if dstrs[0].strip() != '00:000:00000':
+            tstart = time_str2dt(dstrs[0])
+        if dstrs[1].strip() != '00:000:00000':
+            tstop = time_str2dt(dstrs[1])
         stop_col -= 4
     except:
         stop_col = len(line) - 1
     x, y, z, sx, sy, sz = map(float, line[36:stop_col].split())
     line = fstream.readline()
     l = line.split()
-    assert( l[0] == domes and len(l) == 7 )
-    vx, vy,vz, svx, svy, svz = map(float, l[1:])
-    return {'domes': domes,
-            'name': name,
-            'tqn': tqn,
-            'id': cid,
-            'start': tstart,
-            'stop': tstop,
-            'x': x, 'y': y, 'z': z, 'vx': vx, 'vy': vy, 'vz': vz,
-            'sx': sx, 'sy': sy, 'sz': sz, 'svx': svx, 'svy': svy, 'svz': svz}
+    assert (l[0] == domes and len(l) == 7)
+    vx, vy, vz, svx, svy, svz = map(float, l[1:])
+    return {
+        'domes': domes,
+        'name': name,
+        'tqn': tqn,
+        'id': cid,
+        'start': tstart,
+        'stop': tstop,
+        'x': x,
+        'y': y,
+        'z': z,
+        'vx': vx,
+        'vy': vy,
+        'vz': vz,
+        'sx': sx,
+        'sy': sy,
+        'sz': sz,
+        'svx': svx,
+        'svy': svy,
+        'svz': svz
+    }
+
 
 def extrapolate(dtq, x0, vx):
     """ Given a linear model described by x0 and Vx (constant coef. and velocity)
@@ -112,9 +131,14 @@ def extrapolate(dtq, x0, vx):
         float
             Value of the model at delta time dtq (i.e. x0+vx(ti-t0) = x0+vx*dtq).
     """
-    return x0 + vx*dtq
+    return x0 + vx * dtq
 
-def itrf_extrapolate(ssc_file, t0, t=datetime.datetime.now(), station=[], domes=[]):
+
+def itrf_extrapolate(ssc_file,
+                     t0,
+                     t=datetime.datetime.now(),
+                     station=[],
+                     domes=[]):
     """ Given an (ITRF) .SSC file, compute the coordinates of a station list
         at the given epoch (t).The stations can be described by either passing
         in their 4-char id, or their DOMES numbers.
@@ -141,9 +165,10 @@ def itrf_extrapolate(ssc_file, t0, t=datetime.datetime.now(), station=[], domes=
             the extrapolated coordinates in m.
             Stations which were not matched are not included in the list.
 
-    """ 
+    """
     results = []
-    if station: station = [ x.upper() for x in station ]
+    if station:
+        station = [x.upper() for x in station]
     with open(ssc_file) as fin:
         frame, refepoch = read_header(fin)
         line = fin.readline()
@@ -151,14 +176,21 @@ def itrf_extrapolate(ssc_file, t0, t=datetime.datetime.now(), station=[], domes=
             dic = read_next_record(line, fin)
             if dic['domes'] in domes or dic['id'] in station:
                 if t >= dic['start'] and t < dic['stop']:
-                    dt  = t - t0
-                    dyr = (dt.days + dt.seconds/86400e0)/365.25
-                    x   = extrapolate(dyr, dic['x'], dic['vx'])
-                    y   = extrapolate(dyr, dic['y'], dic['vy'])
-                    z   = extrapolate(dyr, dic['z'], dic['vz'])
-                    results.append({'station': dic['id'], 'domes': dic['domes'], 'x': x, 'y': y, 'z': z})
+                    dt = t - t0
+                    dyr = (dt.days + dt.seconds / 86400e0) / 365.25e0
+                    x = extrapolate(dyr, dic['x'], dic['vx'])
+                    y = extrapolate(dyr, dic['y'], dic['vy'])
+                    z = extrapolate(dyr, dic['z'], dic['vz'])
+                    results.append({
+                        'station': dic['id'],
+                        'domes': dic['domes'],
+                        'x': x,
+                        'y': y,
+                        'z': z
+                    })
             line = fin.readline()
         return results
+
 
 # example usage
 #if __name__ == "__main__":
