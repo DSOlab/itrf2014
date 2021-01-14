@@ -4,10 +4,10 @@ itrftools is a collection of Python modules/programs to assist the processing an
 manipulation of ITRF14-related files; ease computation and extrapolation of
 station coordinates.
 
-The package requires numpy (http://www.numpy.org/) and should work both for
+The package requires [numpy](http://www.numpy.org/) and should work both for
 Python 2.x and Python 3.x. No other requirement exists.
 
-The package is acompanied by a (Python) script under /bin/itrftool, which gets
+The package is acompanied by a (Python) script under `/bin/itrftool`, which gets
 automatically installed (during the ppackage installation process) and can
 perform:
 
