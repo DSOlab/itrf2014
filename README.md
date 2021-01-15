@@ -86,13 +86,13 @@ TONG 50902M001   -5930303.53647   -500148.80597  -2286366.30075 2020-05-29 00:00
 > e.g. Python results are not sorted (alphabeticaly)
 
 # todo:
--------------------------------------------------------------------------------
+
  - [ ] Compute standard deviation values for the extrapolated station coordinates.
  - [ ] install C++ binary (e.g. in /usr/local/bin)
  - [ ] configure Makefile.am for production
  - [ ] check clang++
 
 # bug and comments
--------------------------------------------------------------------------------
+
 Please send any bugs, feedback, suggestions, comments, etc ..... to
 xanthos@mail.ntua.gr or dganastasiou@gmail.com
