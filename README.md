@@ -1,5 +1,5 @@
 # itrftools
--------------------------------------------------------------------------------
+
 itrftools is a collection of Python and C++ modules/programs to assist the 
 processing and manipulation of ITRF14-related files; ease computation and 
 extrapolation of station coordinates.
@@ -46,7 +46,6 @@ $> make
 
 
 # Usage
--------------------------------------------------------------------------------
 
 ## Compute PSD Values
 Compute PSD values for a given date and a list of stations; note that the stations 
