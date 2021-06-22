@@ -19,6 +19,8 @@ itrftool_CXXFLAGS = \
 itrftool_SOURCES = \
 	itrf_tool.cpp \
 	itrf_tools.hpp \
-	itrf_tools.cpp
+	itrf_tools.cpp \
+        psd_parser.cpp \
+        ssc_parser.cpp
 
 AM_LDFLAGS = -lggdatetime -lggeodesy

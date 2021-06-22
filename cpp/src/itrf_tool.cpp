@@ -13,6 +13,14 @@ struct psd_delta {
       : site(std::move(str)), dr(std::move(a)){};
 };
 
+template<int N>
+struct charArray { 
+  char ar[N] = {'\0'}; 
+  explicit charArray(const char* str) noexcept {
+    std::memcpy(ar, str, N-1);
+  }
+};
+
 void help_message() noexcept {
   std::cout << "usage: itrftool [-h] [-s [STATION_LIST [STATION_LIST ...]]] "
                "[-m [DOMES_LIST [DOMES_LIST ...]]] [-c SSC_FILE] [-p PSD_FILE] "
@@ -70,11 +78,11 @@ int parse_cmd(int argc, char *argv[],
       if (argc <= i + 1)
         return 1;
       ++i;
-      cmd_map['s'] = std::vector<std::string>();
+      cmd_map['s'] = std::vector<charArray<5>>();
       while (i < argc) {
         if (argv[i][0] == '-')
           break;
-        cmd_map['s'].emplace_back(std::string(argv[i]));
+        cmd_map['s'].emplace_back(argv[i]);
         ++i;
       }
     } else if (!std::strcmp(argv[i], "-m") ||
@@ -82,11 +90,11 @@ int parse_cmd(int argc, char *argv[],
       if (argc <= i + 1)
         return 1;
       ++i;
-      cmd_map['m'] = std::vector<std::string>();
+      cmd_map['m'] = std::vector<charArray<10>>();
       while (i < argc) {
         if (argv[i][0] == '-')
           break;
-        cmd_map['m'].emplace_back(std::string(argv[i]));
+        cmd_map['m'].emplace_back(argv[i]);
         ++i;
       }
     } else if (!std::strcmp(argv[i], "-c") || !std::strcmp(argv[i], "--ssc")) {
@@ -142,9 +150,10 @@ int parse_cmd(int argc, char *argv[],
   return 0;
 }
 
-std::vector<ngpt::sta_crd> merge_sort_unique(std::vector<ngpt::sta_crd> &v1,
-                                             std::vector<ngpt::sta_crd> &v2) {
-  using ngpt::sta_crd;
+/*
+std::vector<itrf::sta_crd> merge_sort_unique(std::vector<itrf::sta_crd> &v1,
+                                             std::vector<itrf::sta_crd> &v2) {
+  using itrf::sta_crd;
   // concatenate vectors to v1
   v1.insert(v1.end(), std::make_move_iterator(v2.begin()),
             std::make_move_iterator(v2.end()));
@@ -160,9 +169,10 @@ std::vector<ngpt::sta_crd> merge_sort_unique(std::vector<ngpt::sta_crd> &v1,
   v1.erase(last, v1.end());
   return std::move(v1);
 }
+*/
 
 int main(int argc, char *argv[]) {
-  using mlsec = ngpt::milliseconds;
+  using sec = ngpt::seconds;
 
   std::map<char, std::vector<std::string>> cmd_map;
   if (parse_cmd(argc, argv, cmd_map))
@@ -180,10 +190,10 @@ int main(int argc, char *argv[]) {
   int year = std::stoi(it->second[0]);
   it = cmd_map.find('d');
   int doy = std::stoi(it->second[0]);
-  ngpt::datetime<mlsec> t(ngpt::year{year}, ngpt::day_of_year{doy}, mlsec{0});
+  ngpt::datetime<sec> t(ngpt::year{year}, ngpt::day_of_year{doy}, sec{0});
 
   // vectors to store results
-  std::vector<ngpt::sta_crd> res1, res2;
+  std::vector<itrf::sta_crd> res1, res2;
 
   // easy case: We have a PSD file but no SSC; Only compute PSD in [e,n,u]
   it = cmd_map.find('n');

@@ -1,26 +1,28 @@
 #include "itrf_tools.hpp"
+#include <stdexcept>
+#include <algorithm>
 
 /// Compute the post-seismic deformation/correction using a parametric model.
-double ngpt::itrf_details::parametric(int model, double dtq, double a1,
-                                      double t1, double a2,
+double itrf::itrf_details::parametric(itrf::psd_model model, double dtq,
+                                      double a1, double t1, double a2,
                                       double t2) noexcept {
   double d{0e0}, te1, te2;
   switch (model) {
-  case 0: // PWL (Piece-Wise Linear Function)
+  case psd_model::pwl: // PWL (Piece-Wise Linear Function)
     d = 0e0;
     break;
-  case 1: // Logarithmic Function
+  case psd_model::logarithmic: // Logarithmic Function
     d = a1 * std::log(1e0 + dtq / t1);
     break;
-  case 2: // Exponential Function
+  case psd_model::exponential: // Exponential Function
     te1 = dtq / t1;
     d = a1 * (1e0 - std::exp(-te1));
     break;
-  case 3: // Logarithmic + Exponential
+  case psd_model::logexp: // Logarithmic + Exponential
     te2 = dtq / t2;
     d = a1 * std::log(1e0 + dtq / t1) + a2 * (1e0 - std::exp(-te2));
     break;
-  case 4: // Two Exponential Functions
+  case psd_model::twoexp: // Two Exponential Functions
     te1 = dtq / t1;
     te2 = dtq / t2;
     d = a1 * (1e0 - std::exp(-te1)) + a2 * (1e0 - std::exp(-te2));
@@ -29,84 +31,101 @@ double ngpt::itrf_details::parametric(int model, double dtq, double a1,
   return d;
 }
 
-/// Read a station PSD record off from a PSD .dat file.
-int ngpt::itrf_details::read_psd_parameters(const std::string &line,
-                                            int &model_nr, double &a1,
-                                            double &t1, double &a2,
-                                            double &t2) {
-  model_nr = line[34] - '0';
-  if (model_nr < 0 || model_nr > 4)
-    return -1;
-
-  std::size_t pos{35}, idx;
-  switch (model_nr) {
+itrf::psd_model itrf::itrf_details::int2model(int mnr) {
+  switch (mnr) {
   case 0:
-    return 0;
+    return psd_model::pwl;
   case 1:
-    // same as case 2
+    return psd_model::logarithmic;
   case 2:
-    a1 = std::stod(line.substr(pos, 10), &idx); // a1
-    pos += idx;
-    t1 = std::stod(line.substr(pos, 10), &idx); // t1
-    return 2;
+    return psd_model::exponential;
   case 3:
-    // same as case 4
+    return psd_model::logexp;
   case 4:
-    a1 = std::stod(line.substr(pos, 10), &idx); // a1
-    pos += idx;
-    t1 = std::stod(line.substr(pos, 10), &idx); // t1
-    pos += idx;
-    a2 = std::stod(line.substr(pos, 10), &idx); // a1
-    pos += idx;
-    t2 = std::stod(line.substr(pos, 10), &idx); // t1
-    return 4;
+    return psd_model::twoexp;
+  default:
+    throw std::runtime_error("[ERROR] Failed to transform int to psd model!");
   }
-  return -1;
 }
 
-/// Function to read the header off from a SSC-type file.
-float ngpt::itrf_details::read_ssc_header(std::ifstream &ssc_stream,
-                                          std::string &ref_frame) {
-  using pos_t = std::string::size_type;
+int itrf::compute_psd(
+    const char *psd_file, const std::vector<itrf::StationId> &stations,
+    const ngpt::datetime<ngpt::seconds> &t, std::vector<itrf::sta_crd> &results,
+    itrf::itrf_details::stationComparissonPolicy policy) noexcept {
+  results.clear();
+  results.reserve(stations.size());
 
-  constexpr pos_t max_chars{256};
-  const std::string middle_part{"STATION POSITIONS AT EPOCH"},
-      last_part{"AND VELOCITIES"};
-  const pos_t mdp_sz{middle_part.size()}, ltp_sz{last_part.size()};
-  const char whitesp = ' ';
-  auto npos = std::string::npos;
-  std::string line;
-  line.reserve(max_chars);
+  std::ifstream fin(psd_file);
+  if (!fin.is_open())
+    return -1;
 
-  ssc_stream.seekg(0, std::ios::beg);
-  std::getline(ssc_stream, line);
+  itrf_details::psd_record rec;
+  double dyr;
 
-  // get the reference frame, which is the frst word in the line
-  pos_t length = line.size();
-  pos_t pos1 = line.find_first_not_of(whitesp);
-  pos_t pos2 = line.find_first_of(whitesp, pos1);
-  if (!((pos1 != npos && pos2 != npos) && (pos2 > pos1)))
-    return -1e0;
-  ref_frame = line.substr(pos1, pos2 - pos1);
+  auto j = results.end();
+  while (!itrf_details::read_next_record_psd(fin, rec)) {
+    if (auto it = std::find_if(stations.cbegin(), stations.cend(),
+                               [&](const StationId& staid) {
+                                 return !itrf_details::compare_stations(
+                                     rec, staid, policy);
+                               });
+        it != stations.cend()) {
+      // do we arleady have the station?
+      if (j = std::find_if(results.begin(), results.end(),
+                           [&](const sta_crd &crd) {
+                             return !itrf_details::compare_stations(rec, crd,
+                                                                    policy);
+                           });
+          j == results.end()) {
+        results.emplace_back(sta_crd{});
+        j = results.begin() + results.size() - 1;
+        std::strncmp(j->staid.name, rec.name, 4);
+        std::strncmp(j->staid.domes, rec.domes, 9);
+      }
+      // compute/append PSD
+      if (t >= rec.teq) {
+        ngpt::datetime_interval<ngpt::seconds> dt(ngpt::delta_date(t, rec.teq));
+        dyr = dt.as_mjd() / 365.25e0;
+        j->x += itrf_details::parametric(rec.emdn, dyr, rec.ea1, rec.et1,
+                                         rec.ea2, rec.et2);
+        j->y += itrf_details::parametric(rec.nmdn, dyr, rec.na1, rec.nt1,
+                                         rec.na2, rec.nt2);
+        j->z += itrf_details::parametric(rec.umdn, dyr, rec.ua1, rec.ut1,
+                                         rec.ua2, rec.ut2);
+      }
+    }
+  }
+  return results.size(); // number of stations actually found
+}
 
-  // the header is actually pretty standard .... check the middle part
-  if (!(length > (pos2 + mdp_sz)) ||
-      line.compare(pos2 + 1, mdp_sz, middle_part))
-    return -1e0;
+int itrf::ssc_extrapolate(std::ifstream &fin,
+                    const std::vector<itrf::StationId> &stations,
+                    const ngpt::datetime<ngpt::seconds> &t, const ngpt::datetime<ngpt::seconds> &t0,
+                    std::vector<itrf::sta_crd> &results, itrf::itrf_details::stationComparissonPolicy policy) noexcept {
+  
+  ngpt::datetime_interval<ngpt::seconds> dt{ngpt::delta_date(t, t0)};
+  double dyr = dt.as_mjd() / 365.25e0;
 
-  // get the reference epoch
-  pos1 = pos2 + mdp_sz + 1;
-  pos2 = line.find_first_of(whitesp, pos1 + 1);
-  std::string ref_epoch{line.substr(pos1, pos2 - pos1)};
+  results.clear();
+  results.reserve(stations.size());
 
-  // check the last part
-  if (!(length >= (pos2 + ltp_sz)) || line.compare(pos2 + 1, ltp_sz, last_part))
-    return -1e0;
+  itrf_details::ssc_record record;
+  auto it = stations.begin();
+  int stations_found =0;
 
-  // read a bunch of no-info lines ....
-  for (int i = 0; i < 6; i++)
-    std::getline(ssc_stream, line);
-
-  // retun reference epoch as float
-  return std::stof(ref_epoch);
+  while (!itrf_details::read_next_record(fin, record) && stations_found<stations.size()) {
+    if ((it = std::find_if(stations.begin(), stations.end(), [=](const StationId& &str) {
+           return !itrf_details::compare_stations<itrf_details::ssc_record, itrf::StationId>(record, str, policy);
+         })) != stations.end()) {
+      if (t >= record.from && t < record.to) {
+        results.emplace_back(sta_crd{});
+        auto j = results.end() - 1;
+        j->x = record.x + (record.vx * dyr);
+        j->y = record.y + (record.vy * dyr);
+        j->z = record.z + (record.vz * dyr);
+        ++stations_found;
+      }
+    }
+  }
+  return results.size(); // number of stations actually found
 }
