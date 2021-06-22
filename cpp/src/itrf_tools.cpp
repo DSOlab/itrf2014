@@ -1,6 +1,6 @@
 #include "itrf_tools.hpp"
-#include <stdexcept>
 #include <algorithm>
+#include <stdexcept>
 
 /// Compute the post-seismic deformation/correction using a parametric model.
 double itrf::itrf_details::parametric(itrf::psd_model model, double dtq,
@@ -52,6 +52,7 @@ int itrf::compute_psd(
     const char *psd_file, const std::vector<itrf::StationId> &stations,
     const ngpt::datetime<ngpt::seconds> &t, std::vector<itrf::sta_crd> &results,
     itrf::itrf_details::stationComparissonPolicy policy) noexcept {
+
   results.clear();
   results.reserve(stations.size());
 
@@ -64,23 +65,22 @@ int itrf::compute_psd(
 
   auto j = results.end();
   while (!itrf_details::read_next_record_psd(fin, rec)) {
-    if (auto it = std::find_if(stations.cbegin(), stations.cend(),
-                               [&](const StationId& staid) {
-                                 return !itrf_details::compare_stations(
-                                     rec, staid, policy);
-                               });
-        it != stations.cend()) {
-      // do we arleady have the station?
-      if (j = std::find_if(results.begin(), results.end(),
-                           [&](const sta_crd &crd) {
-                             return !itrf_details::compare_stations(rec, crd,
-                                                                    policy);
-                           });
-          j == results.end()) {
+    // printf("\tNew PSD record: for %s %s\n", rec.name(), rec.domes()); --> ok
+    auto it = std::find_if(
+        stations.cbegin(), stations.cend(), [&](const StationId &staid) {
+          return !itrf_details::compare_stations(rec, staid, policy);
+        });
+    if (it != stations.cend()) {
+      j = std::find_if(results.begin(), results.end(), [&](const sta_crd &crd) {
+        return !itrf_details::compare_stations(rec, crd, policy);
+      });
+      if (j == results.end()) {
         results.emplace_back(sta_crd{});
         j = results.begin() + results.size() - 1;
-        std::strncmp(j->staid.name, rec.name, 4);
-        std::strncmp(j->staid.domes, rec.domes, 9);
+        // std::strncpy(j->staid.mname, rec.name(), 4);
+        // std::strncpy(j->staid.mdomes, rec.domes(), 9);
+        std::memcpy(j->staid.mname, rec.name(), 4);
+        std::memcpy(j->staid.mdomes, rec.domes(), 9);
       }
       // compute/append PSD
       if (t >= rec.teq) {
@@ -98,11 +98,13 @@ int itrf::compute_psd(
   return results.size(); // number of stations actually found
 }
 
-int itrf::ssc_extrapolate(std::ifstream &fin,
-                    const std::vector<itrf::StationId> &stations,
-                    const ngpt::datetime<ngpt::seconds> &t, const ngpt::datetime<ngpt::seconds> &t0,
-                    std::vector<itrf::sta_crd> &results, itrf::itrf_details::stationComparissonPolicy policy) noexcept {
-  
+int itrf::ssc_extrapolate(
+    std::ifstream &fin, const std::vector<itrf::StationId> &stations,
+    const ngpt::datetime<ngpt::seconds> &t,
+    const ngpt::datetime<ngpt::seconds> &t0,
+    std::vector<itrf::sta_crd> &results,
+    itrf::itrf_details::stationComparissonPolicy policy) noexcept {
+
   ngpt::datetime_interval<ngpt::seconds> dt{ngpt::delta_date(t, t0)};
   double dyr = dt.as_mjd() / 365.25e0;
 
@@ -111,15 +113,19 @@ int itrf::ssc_extrapolate(std::ifstream &fin,
 
   itrf_details::ssc_record record;
   auto it = stations.begin();
-  int stations_found =0;
+  int stations_found = 0;
 
-  while (!itrf_details::read_next_record(fin, record) && stations_found<stations.size()) {
-    if ((it = std::find_if(stations.begin(), stations.end(), [=](const StationId& &str) {
-           return !itrf_details::compare_stations<itrf_details::ssc_record, itrf::StationId>(record, str, policy);
-         })) != stations.end()) {
+  while (!itrf_details::read_next_record(fin, record) &&
+         stations_found < (int)stations.size()) {
+    if ((it = std::find_if(
+             stations.begin(), stations.end(), [=](const StationId &str) {
+               return !itrf_details::compare_stations(record, str, policy);
+             })) != stations.end()) {
       if (t >= record.from && t < record.to) {
         results.emplace_back(sta_crd{});
         auto j = results.end() - 1;
+        std::memcpy(j->staid.mname, record.name(), 4);
+        std::memcpy(j->staid.mdomes, record.domes(), 9);
         j->x = record.x + (record.vx * dyr);
         j->y = record.y + (record.vy * dyr);
         j->z = record.z + (record.vz * dyr);

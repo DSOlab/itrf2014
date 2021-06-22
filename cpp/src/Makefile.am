@@ -1,6 +1,9 @@
-bin_PROGRAMS = itrftool
+lib_LTLIBRARIES = libitrfcpp.la
 
-itrftool_CXXFLAGS = \
+dist_include_HEADERS = \
+	itrf_tools.hpp
+
+libitrfcpp_la_CXXFLAGS = \
 	-std=c++17 \
 	-g \
 	-pg \
@@ -13,14 +16,11 @@ itrftool_CXXFLAGS = \
 	-Winline \
 	-Wdisabled-optimization \
 	-DDEBUG \
-	-Wno-error=inline \
-	-I$(top_srcdir)/src
+	-Wno-error=inline
 
-itrftool_SOURCES = \
-	itrf_tool.cpp \
-	itrf_tools.hpp \
+dist_libitrfcpp_la_SOURCES = \
 	itrf_tools.cpp \
         psd_parser.cpp \
         ssc_parser.cpp
 
-AM_LDFLAGS = -lggdatetime -lggeodesy
+#AM_LDFLAGS = -lggdatetime -lggeodesy

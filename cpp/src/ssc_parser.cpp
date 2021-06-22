@@ -85,8 +85,8 @@ int itrf::itrf_details::read_next_record(
 
   // first line has domes, site_id, position info and validity interval
   if (ssc_stream.getline(line, max_chars)) {
-    std::memcpy(record.name, line + 32, 4); // 4-char id
-    std::memcpy(record.domes, line, 9);     // domes
+    std::memcpy(record.staid.mname, line + 32, sizeof(char) * 4); // 4-char id
+    std::memcpy(record.staid.mdomes, line, sizeof(char) * 9);     // domes
 
     char *end, *start;
     start = line + 36;
@@ -129,13 +129,13 @@ int itrf::itrf_details::read_next_record(
       for (int i = 0; i < 3; i++) {
         idate[i] = std::strtol(start, &end, 10);
         assert(start != end);
-        start = end + 1l
+        start = end + 1;
       }
       if ((idate[0] + idate[1] + idate[2]) != 0) {
         idate[0] += (idate[0] > 70) ? (1900) : (2000);
-        ngpt::datetime<ngpt::seconds> tmp{ngpt::year{idate[0]},
-                                          ngpt::day_of_year{idate[1]},
-                                          ngpt::seconds{idate[2]}};
+        ngpt::datetime<ngpt::seconds> tmp{ngpt::year(idate[0]),
+                                          ngpt::day_of_year(idate[1]),
+                                          ngpt::seconds(idate[2])};
         record.from = tmp;
       }
 
@@ -151,25 +151,26 @@ int itrf::itrf_details::read_next_record(
       for (int i = 0; i < 3; i++) {
         idate[i] = std::strtol(start, &end, 10);
         assert(start != end);
-        start = end + 1l
+        start = end + 1;
       }
       if ((idate[0] + idate[1] + idate[2]) != 0) {
         idate[0] += (idate[0] > 70) ? (1900) : (2000);
-        ngpt::datetime<ngpt::seconds> tmp{ngpt::year{idate[0]},
-                                          ngpt::day_of_year{idate[1]},
-                                          ngpt::seconds{idate[2]}};
+        ngpt::datetime<ngpt::seconds> tmp{ngpt::year(idate[0]),
+                                          ngpt::day_of_year(idate[1]),
+                                          ngpt::seconds(idate[2])};
         record.to = tmp;
       }
     }
   } else {
+    if (ssc_stream.eof())
+      return -1;
     fprintf(stderr, "[ERROR] Failed to read line from SSC file.\n");
     return 1;
   }
 
   // second line has velocity info
   if (ssc_stream.getline(line, max_chars)) {
-    assert(!line.compare(0, 9, record.site, 5, 9));
-    if (std::strncmp(line, record.domes, 9)) {
+    if (std::strncmp(line, record.domes(), 9)) {
       fprintf(stderr, "[ERROR] Expected velocity info line, found:\n%s", line);
       return 2;
     }
@@ -177,7 +178,7 @@ int itrf::itrf_details::read_next_record(
     start = line + 36;
     for (int i = 0; i < 3; i++) {
       dvec[i] = std::strtod(start, &end);
-      assert(dvec[i] && start != end);
+      assert(/*dvec[i] &&*/ start != end);
       start = end;
     }
     record.vx = dvec[0];

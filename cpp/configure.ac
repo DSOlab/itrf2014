@@ -9,6 +9,10 @@ AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/itrf_tools.hpp])
 AC_CONFIG_HEADERS([config.h])
 
+# Libtool
+LT_PREREQ([2.2])
+LT_INIT([dlopen])
+
 # Checks for programs.
 AC_PROG_CXX
 
@@ -25,5 +29,6 @@ AC_TYPE_SIZE_T
 # Checks for library functions.
 
 AC_CONFIG_FILES([Makefile
-                 src/Makefile])
+                 src/Makefile
+                 bin/Makefile])
 AC_OUTPUT
