@@ -9,43 +9,24 @@
 
 namespace itrf {
 
+/// @class StationId A struct to hold a statio id.
+/// A station id has two (string) fields: a 4-character name and
+/// a DOMES number (9 chars).
+/// Members are c-strings; at construction last character of the strings is
+/// '\0'. Do not change that.
 struct StationId {
   char mname[5] = {'\0'};
   char mdomes[10] = {'\0'};
   const char *name() const noexcept { return mname; }
   const char *domes() const noexcept {
     return mdomes;
-  } /*
-explicit StationId(const char* str=nullptr) noexcept {
-if (str) {
-auto len = std::strlen(str);
-if (len<5) {
-std::strncpy(mname, str, len);
-} else if (len<11) {
-std::strncpy(mdomes, str, len);
-} else {
-std::strncpy(mname, str, 4);
-std::strncpy(mdomes, str+5, len-5);
-}
-}
-}
-StationId& operator=(const StationId& s) noexcept {
-if (this!=&s) {
-std::strncpy(mname, s.mname, 5);
-std::strncpy(mdomes, s.mdomes, 10);
-}
-return *this;
-}
-StationId(const StationId& s) noexcept {
-std::strncpy(mname, s.mname, 5);
-std::strncpy(mdomes, s.mdomes, 10);
-}*/
-};
+  }
+}; //StationId
 
 /// A structure to hold a station and its coordinates.
-/// It holds the station's name (4char-id + ' ' + domes number), plus the
-/// 3 cartesian components (x, y, z). This is clearly a dummy class, to ease
-/// the use of such simple collections.
+/// It holds the station's name (as StationId), plus the
+/// 3 cartesian components (x, y, z). This is clearly a 
+/// wrapper class to ease such simple collections.
 struct sta_crd {
   StationId staid;
   double x, y, z; ///< Coordinates in m, [x,y,z] components
@@ -53,23 +34,29 @@ struct sta_crd {
   const char *domes() const noexcept { return staid.domes(); }
 }; // sta_crd
 
+/// @enum psd_model
+/// Possible ITRF-defined Post Seismic Deformation Models
 enum class psd_model : uint_fast8_t {
   pwl = 0, // piece-wise linear
   logarithmic,
   exponential,
   logexp, // logarithmic plus exponential
   twoexp  // two exponential functions
-};        // psd_model
+}; // psd_model
 
 namespace itrf_details {
 
+/// @brief Cast an integer to a psd_model enum
 psd_model int2model(int model_nr);
 
+/// @enum stationComparissonPolicy
+/// An enum class to enable different comparisson options when 
+/// comparing stationId's.
 enum class stationComparissonPolicy : uint_fast8_t {
   use_name_id = 0, // only name (aka 4char id)
   use_domes,       // only domes number
   use_full_name    // name plus domes
-};                 // stationComparissonPolicy
+}; // stationComparissonPolicy
 
 /// A structure to hold a (full, two-line) SSC record for a station.
 struct ssc_record {
