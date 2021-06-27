@@ -3,6 +3,7 @@
 
 #include "ggdatetime/datetime_write.hpp"
 #include "ggdatetime/dtcalendar.hpp"
+#include "sinex.hpp"
 #include <cstdint>
 #include <fstream>
 #include <vector>

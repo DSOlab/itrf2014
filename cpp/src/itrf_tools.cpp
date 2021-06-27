@@ -49,6 +49,18 @@ itrf::psd_model itrf::itrf_details::int2model(int mnr) {
 }
 
 int itrf::compute_psd(
+    const char *sinex_file, const std::vector<itrf::StationId> &stations,
+    const ngpt::datetime<ngpt::seconds> &t, std::vector<itrf::sta_crd> &results,
+    itrf::itrf_details::stationComparissonPolicy policy) noexcept {
+  
+  results.clear();
+  results.reserve(stations.size());
+
+
+  
+  }
+
+int itrf::compute_psd(
     const char *psd_file, const std::vector<itrf::StationId> &stations,
     const ngpt::datetime<ngpt::seconds> &t, std::vector<itrf::sta_crd> &results,
     itrf::itrf_details::stationComparissonPolicy policy) noexcept {
@@ -65,7 +77,6 @@ int itrf::compute_psd(
 
   auto j = results.end();
   while (!itrf_details::read_next_record_psd(fin, rec)) {
-    // printf("\tNew PSD record: for %s %s\n", rec.name(), rec.domes()); --> ok
     auto it = std::find_if(
         stations.cbegin(), stations.cend(), [&](const StationId &staid) {
           return !itrf_details::compare_stations(rec, staid, policy);
@@ -77,8 +88,6 @@ int itrf::compute_psd(
       if (j == results.end()) {
         results.emplace_back(sta_crd{});
         j = results.begin() + results.size() - 1;
-        // std::strncpy(j->staid.mname, rec.name(), 4);
-        // std::strncpy(j->staid.mdomes, rec.domes(), 9);
         std::memcpy(j->staid.mname, rec.name(), 4);
         std::memcpy(j->staid.mdomes, rec.domes(), 9);
       }
