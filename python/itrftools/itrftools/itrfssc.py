@@ -178,6 +178,8 @@ def itrf_extrapolate(ssc_file,
                 if t >= dic['start'] and t < dic['stop']:
                     dt = t - t0
                     dyr = (dt.days + dt.seconds / 86400e0) / 365.25e0
+                    print('[DEBUG] Found crd for station {:} in SSC: {:15.5f} {:15.5f} {:15.5f}'.format(dic['id']+ ' ' +dic['domes'], dic['x'], dic['y'], dic['z']))
+                    print('                               Velocity : {:15.5f} {:15.5f} {:15.5f} delta_year={:20.15f}'.format(dic['vx'], dic['vy'], dic['vz'], dyr))
                     x = extrapolate(dyr, dic['x'], dic['vx'])
                     y = extrapolate(dyr, dic['y'], dic['vy'])
                     z = extrapolate(dyr, dic['z'], dic['vz'])

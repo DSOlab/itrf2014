@@ -1,6 +1,7 @@
 #include "ggeodesy/car2ell.hpp"
 #include "ggeodesy/geodesy.hpp"
 #include "itrf_tools.hpp"
+#include "ggdatetime/datetime_write.hpp"
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -39,6 +40,10 @@ void help_message() noexcept {
   std::cout << "-c SSC_FILE, --ssc SSC_FILE\n";
   std::cout << "                      A SSC ascci file to extract coordinates "
                "and velocities from. These files are normaly accessible at: "
+               "http://itrf.ign.fr/ITRF_solutions/\n";
+  std::cout << "-x SINEX_FILE, --sinex SINEX_FILE\n";
+  std::cout << "                      A SINEX psd file to extract psd parameters "
+               "from. These files are normaly accessible at: "
                "http://itrf.ign.fr/ITRF_solutions/\n";
   std::cout << "-p PSD_FILE, --psd PSD_FILE\n";
   std::cout
@@ -101,6 +106,11 @@ int parse_cmd(int argc, char *argv[],
         return 1;
       cmd_map['p'] = std::vector<std::string>{std::string(argv[i + 1])};
       i += 2;
+    } else if (!std::strcmp(argv[i], "-x") || !std::strcmp(argv[i], "--sinex")) {
+      if (argc <= i + 1)
+        return 1;
+      cmd_map['x'] = std::vector<std::string>{std::string(argv[i + 1])};
+      i += 2;
     } else if (!std::strcmp(argv[i], "-y") || !std::strcmp(argv[i], "--year")) {
       if (argc <= i + 1)
         return 1;
@@ -127,17 +137,21 @@ int parse_cmd(int argc, char *argv[],
   // make sure the user didn't mess up the args ...
   auto mend = cmd_map.end();
   auto i1 = cmd_map.find('n');
-  if (i1->second[0] == "1" && cmd_map.find('p') == mend) {
+  if (i1->second[0] == "1" && ( cmd_map.find('p') == mend && cmd_map.find('x')==mend)) {
     std::cerr << "[ERROR] If you need the PSD values, you need to supply a "
-                 "PSD file!\n";
+                 "PSD or SINEX file!\n";
     return 1;
   }
-  if (i1->second[0] == "0" && cmd_map.find('c') == mend) {
+  if ((i1->second[0] == "0" && cmd_map.find('c') == mend) && cmd_map.find('h') == mend) {
     std::cerr << "[ERROR] You need to supply an SSC file for coordinate "
                  "extrapolation\n";
     return 1;
   }
-  if (cmd_map.find('y') == mend || cmd_map.find('d') == mend) {
+  if (cmd_map.find('p') != mend && cmd_map.find('x')!=mend ) {
+    std::cerr << "[ERROR] Only provide one of PSD/SINEX files\n";
+    return 1;
+  }
+  if ((cmd_map.find('y') == mend || cmd_map.find('d') == mend) && cmd_map.find('h')==mend) {
     std::cerr << "[ERROR] Need to provide a year and a day_of_year\n";
     return 1;
   }
@@ -192,6 +206,27 @@ std::vector<itrf::sta_crd> merge_sort_unique(std::vector<itrf::sta_crd> &v1,
   v1.erase(last, v1.end());
   return v1;
 }
+  
+int compute_psd__(const char* psd_fn, const char* snx_fn, const std::vector<std::string>& sites, ngpt::datetime<ngpt::seconds>& t, std::vector<itrf::sta_crd>& results,
+  itrf::itrf_details::stationComparissonPolicy policy) {
+
+    if (psd_fn)
+    
+      return itrf::compute_psd(
+          psd_fn,
+          str2stationId(
+              sites,
+              policy),
+          t, results, policy);
+    
+    return itrf::compute_psd_from_sinex(
+          snx_fn,
+          str2stationId(
+              sites,
+              policy),
+          t, results, policy);
+  }
+
 
 int main(int argc, char *argv[]) {
   using sec = ngpt::seconds;
@@ -215,32 +250,37 @@ int main(int argc, char *argv[]) {
   ngpt::datetime<sec> t(ngpt::year{year}, ngpt::day_of_year{doy}, sec{0});
 
   // vectors to store results
-  std::vector<itrf::sta_crd> res1, res2;
+  std::vector<itrf::sta_crd> res1, res2, psd_results;
+
+  // Compute PSD if a sinex or PSD file is given
+  if (cmd_map.find('p') != mend) {
+    std::string psd_file = cmd_map['p'][0];
+    if (auto its = cmd_map.find('s'); its != mend) {
+      if (compute_psd__(psd_file.c_str(), nullptr, its->second, t, res1, itrf::itrf_details::stationComparissonPolicy::use_name_id)) return 11;
+    }
+    if (auto its = cmd_map.find('m'); its != mend) {
+      if (compute_psd__(psd_file.c_str(), nullptr, its->second, t, res2, itrf::itrf_details::stationComparissonPolicy::use_domes)) return 11;
+    }
+    psd_results = merge_sort_unique(res1, res2);
+    printf("[DEBUG] PSD file found; computed deformation for %3d sites\n", (int)psd_results.size());
+  } else if (cmd_map.find('x') != mend) {
+    std::string snx_file = cmd_map['x'][0];
+    if (auto its = cmd_map.find('s'); its != mend) {
+      if (compute_psd__(nullptr, snx_file.c_str(), its->second, t, res1, itrf::itrf_details::stationComparissonPolicy::use_name_id)) return 12;
+    }
+    if (auto its = cmd_map.find('m'); its != mend) {
+      if (compute_psd__(nullptr, snx_file.c_str(), its->second, t, res2, itrf::itrf_details::stationComparissonPolicy::use_domes)) return 12;
+    }
+    psd_results = merge_sort_unique(res1, res2);
+    printf("[DEBUG] SINEX file found; computed deformation for %3d sites\n", (int)psd_results.size());
+  }
 
   // easy case: We have a PSD file but no SSC; Only compute PSD in [e,n,u]
   it = cmd_map.find('n');
   if (auto tit = cmd_map.find('c'); it->second[0] == "1" && tit == mend) {
-    std::string psd_file = cmd_map['p'][0];
-    if (auto its = cmd_map.find('s'); its != mend) {
-      itrf::compute_psd(
-          psd_file.c_str(),
-          str2stationId(
-              its->second,
-              itrf::itrf_details::stationComparissonPolicy::use_name_id),
-          t, res1, itrf::itrf_details::stationComparissonPolicy::use_name_id);
-    }
-    if (auto its = cmd_map.find('m'); its != mend) {
-      itrf::compute_psd(
-          psd_file.c_str(),
-          str2stationId(
-              its->second,
-              itrf::itrf_details::stationComparissonPolicy::use_domes),
-          t, res2, itrf::itrf_details::stationComparissonPolicy::use_domes);
-    }
-    auto results = merge_sort_unique(res1, res2);
     printf("\nNAME   DOMES   East(mm) North(mm) Up(mm)        EPOCH");
     printf("\n---- --------- -------- -------- -------- ------------------");
-    for (const auto &i : results) {
+    for (const auto &i : psd_results) {
       printf("\n%s %s %+8.2f %+8.2f %+8.2f %s", i.staid.name(), i.staid.domes(),
              i.x, i.y, i.z, ngpt::strftime_ymd_hms(t).c_str());
     }
@@ -264,6 +304,9 @@ int main(int argc, char *argv[]) {
   ngpt::datetime<sec> t0(ngpt::year(t0_yr), ngpt::day_of_year(1), sec(0));
 
   // extrapolate coordinates to epoch t using the ssc file
+  std::vector<itrf::sta_crd> ssc_results;
+  if (!res1.empty()) res1.clear();
+  if (!res2.empty()) res2.clear();
   if (auto its = cmd_map.find('s'); its != mend) {
     itrf::ssc_extrapolate(
         fin,
@@ -279,47 +322,29 @@ int main(int argc, char *argv[]) {
                       itrf::itrf_details::stationComparissonPolicy::use_domes),
         t, t0, res2, itrf::itrf_details::stationComparissonPolicy::use_domes);
   }
-  auto results = merge_sort_unique(res1, res2);
+  ssc_results = merge_sort_unique(res1, res2);
+  // printf("[DEBUG] Coordinates extrapolated for %2d sites\n", (int)results.size());
 
-  // do we need to add the PSD's ?
-  std::vector<psd_delta> psd_info;
-  if (it = cmd_map.find('p'); it != mend) {
-    std::vector<itrf::sta_crd> pres;
-    std::string psd_file = it->second[0];
-    // compute the psd values for the station-id vector  ....
-    if (auto its = cmd_map.find('s'); its != mend) {
-      itrf::compute_psd(
-          psd_file.c_str(),
-          str2stationId(
-              its->second,
-              itrf::itrf_details::stationComparissonPolicy::use_name_id),
-          t, pres, itrf::itrf_details::stationComparissonPolicy::use_name_id);
-      // add results to the original results vector (psd are in [n,e,u] and mm)
-      for (auto &rec : results) {
-        if (auto rit = std::find_if(pres.begin(), pres.end(),
-                                    [&ref = std::as_const(rec)](const auto &a) {
-                                      return !std::strncmp(a.staid.name(),
-                                                           ref.staid.name(), 4);
-                                    });
-            rit != pres.end()) {
+  // add PSD (after convertion to cartesian) to the xtrapolated coordinates
+  std::vector<psd_delta> psd_info; // for reporting later on ...
+  if (psd_results.size()) {
+    for (auto &ssc : ssc_results) {
+      auto psd = std::find_if(psd_results.cbegin(), psd_results.cend(), [&](const itrf::sta_crd& psd_neu){return psd_neu.is_same(ssc);});
+      if (psd != psd_results.cend()) {
           double lat, lon, hgt, dx, dy, dz;
-          ngpt::car2ell<ngpt::ellipsoid::grs80>(rec.x, rec.y, rec.z, lat, lon,
-                                                hgt);
-          ngpt::top2car(rit->y * 1e-3, rit->x * 1e-3, rit->z * 1e-3, lat, lon,
+          ngpt::car2ell<ngpt::ellipsoid::grs80>(ssc.x, ssc.y, ssc.z, lat, lon, hgt);
+          ngpt::top2car(psd->y * 1e-3, psd->x * 1e-3, psd->z * 1e-3, lat, lon,
                         dx, dy, dz);
-          rec.x += dx;
-          rec.y += dy;
-          rec.z += dz;
+          ssc.x += dx;
+          ssc.y += dy;
+          ssc.z += dz;
           if (cmd_map['n'][0] == "1") {
             psd_info.emplace_back(
-                rec.staid, std::array<double, 6>{rit->x, rit->y, rit->z,
+                ssc.staid, std::array<double, 6>{psd->x, psd->y, psd->z,
                                                  dx * 1e3, dy * 1e3, dz * 1e3});
           }
-        } /* else {
-           std::cout<<"\n[DEBUG] No PSD record for station \""<<rec.site<<"\"";
-         }*/
       }
-    }
+    }   
   }
 
   std::cout << "\nReference Frame: " << ref_frame
@@ -329,7 +354,7 @@ int main(int argc, char *argv[]) {
            "EPOCH");
     printf("\n---- --------- --------------- --------------- --------------- "
            "------------------");
-    for (const auto &i : results) {
+    for (const auto &i : ssc_results) {
       printf("\n%s %s %15.5f %15.5f %15.5f %s", i.staid.name(), i.staid.domes(),
              i.x, i.y, i.z, ngpt::strftime_ymd_hms(t).c_str());
     }

@@ -1,8 +1,5 @@
 lib_LTLIBRARIES = libitrfcpp.la
 
-dist_include_HEADERS = \
-	itrf_tools.hpp
-
 libitrfcpp_la_CXXFLAGS = \
 	-std=c++17 \
 	-g \
@@ -22,5 +19,9 @@ dist_libitrfcpp_la_SOURCES = \
 	itrf_tools.cpp \
         psd_parser.cpp \
         ssc_parser.cpp
+
+dist_include_HEADERS = \
+	itrf_details.hpp \
+	itrf_tools.hpp
 
 #AM_LDFLAGS = -lggdatetime -lggeodesy

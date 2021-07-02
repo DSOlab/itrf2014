@@ -1,7 +1,6 @@
-#include "itrf_tools.hpp"
+#include "itrf_details.hpp"
 #include <cassert>
 #include <cstdio>
-#include <fstream>
 
 void next_nonwp(const char *start, char **end) noexcept {
   while (*start && *start != ' ')
